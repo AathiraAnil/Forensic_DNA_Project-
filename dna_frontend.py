@@ -5,33 +5,51 @@ import joblib
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
+# --- PAGE CONFIG ---
 st.set_page_config(page_title="Forensic DNA Phenotyping", layout="centered")
 st.title("🔬 Forensic DNA Phenotyping")
+st.write("### Iris Color Prediction System")
+st.sidebar.header("Model Status")
 
-# --- THE MODEL BUILDER ---
-def load_manual_model():
-    # We build the 'socket' to match your '10-pin plug'
+# --- MANUAL MODEL BUILDER (DL) ---
+def load_manual_dl_model():
+    # We build the 'socket' to match your '10-pin plug' (model_weights.weights.h5)
+    # The architecture below matches the (10, 32) shape from your error message.
     model = models.Sequential([
         layers.Input(shape=(10,)), 
         layers.Dense(32, activation='relu'),
         layers.Dense(32, activation='relu'),
         layers.Dense(3, activation='softmax')
     ])
-    # Load the weights file you uploaded
+    # Load the raw math (weights) you just downloaded from Colab
     model.load_weights("model_weights.weights.h5")
     return model
 
-# Load models
-try:
-    rf_model = joblib.load("random_forest_model.pkl")
-    dl_model = load_manual_model()
-    st.sidebar.success("✅ Models Ready")
-except Exception as e:
-    st.sidebar.error(f"❌ Error: {e}")
+# --- LOAD BOTH MODELS ---
+rf_model = None
+dl_model = None
 
-# --- THE UI ---
-st.subheader("Enter your 4 SNPs")
-st.write("The model expects 10 values, so we will fill the rest with '0' automatically.")
+try:
+    # 1. Load Random Forest (Expects 4 features)
+    if os.path.exists("random_forest_model.pkl"):
+        rf_model = joblib.load("random_forest_model.pkl")
+    
+    # 2. Load Deep Learning (Expects 10 features via weights file)
+    if os.path.exists("model_weights.weights.h5"):
+        dl_model = load_manual_dl_model()
+    
+    if rf_model and dl_model:
+        st.sidebar.success("✅ Both Models Ready")
+    else:
+        if not rf_model: st.sidebar.error("❌ RF Model (.pkl) missing")
+        if not dl_model: st.sidebar.error("❌ Weights (.weights.h5) missing")
+except Exception as e:
+    st.sidebar.error(f"❌ Load Error: {e}")
+
+# --- USER INPUT UI ---
+st.divider()
+st.subheader("Enter 4 SNP Genotypes")
+st.info("Select the genotype (0, 1, or 2) for the 4 target SNPs.")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -41,24 +59,55 @@ with col2:
     s3 = st.selectbox("SNP 3", [0, 1, 2])
     s4 = st.selectbox("SNP 4", [0, 1, 2])
 
-if st.button("Predict"):
-    # We take your 4 inputs + 6 zeros to satisfy the model's '10-pin' requirement
-    final_input = np.array([[s1, s2, s3, s4, 0, 0, 0, 0, 0, 0]])
-    
-    # 1. Random Forest Prediction (Assuming it also needs 10)
-    try:
-        rf_res = rf_model.predict(final_input)[0]
-        st.write(f"### Random Forest Result: **{rf_res}**")
-        
-        # 2. Deep Learning Prediction
-        dl_probs = dl_model.predict(final_input)
-        classes = ["Blue", "Brown", "Green"]
-        dl_res = classes[np.argmax(dl_probs)]
-        st.write(f"### Deep Learning Result: **{dl_res}**")
-        
-        # 3. Show Image
-        img = f"{str(rf_res).lower()}_eye.png"
-        if os.path.exists(img):
-            st.image(img, width=400)
-    except Exception as e:
-        st.error(f"Prediction Error: {e}. Your Random Forest model might expect a different number of inputs.")
+# --- PREDICTION LOGIC ---
+if st.button("Predict Eye Color", type="primary"):
+    if rf_model is not None and dl_model is not None:
+        try:
+            # --- DATA PREPARATION ---
+            # Random Forest expects exactly 4 inputs
+            rf_input = np.array([[s1, s2, s3, s4]])
+            
+            # Deep Learning expects 10 inputs (4 real + 6 dummy zeros)
+            dl_input = np.array([[s1, s2, s3, s4, 0, 0, 0, 0, 0, 0]])
+            
+            # --- EXECUTE PREDICTIONS ---
+            # 1. Random Forest Prediction
+            rf_pred = rf_model.predict(rf_input)[0]
+            
+            # 2. Deep Learning Prediction
+            dl_probs = dl_model.predict(dl_input)
+            categories = ["Blue", "Brown", "Green"]
+            dl_pred = categories[np.argmax(dl_probs)]
+            
+            st.divider()
+            res_c1, res_c2 = st.columns(2)
+            
+            with res_c1:
+                st.write("#### Random Forest")
+                st.success(f"**Result: {rf_pred}**")
+                
+            with res_c2:
+                st.write("#### Deep Learning")
+                st.info(f"**Result: {dl_pred}**")
+                
+            # --- IMAGE DISPLAY ---
+            # Logic: Convert prediction to lowercase to match filename (e.g., 'brown_eye.png')
+            color_key = str(rf_pred).lower()
+            if "brown" in color_key:
+                img_file = "brown_eye.png"
+            elif "green" in color_key:
+                img_file = "green_eye.png"
+            else:
+                img_file = "blue_eye.png"
+                
+            if os.path.exists(img_file):
+                st.image(img_file, width=400, caption=f"Predicted Phenotype: {rf_pred}")
+            else:
+                st.warning(f"⚠️ Image '{img_file}' not found in the repository.")
+
+        except Exception as e:
+            st.error(f"Prediction Error: {e}")
+    else:
+        st.error("Models are not loaded. Check the sidebar for missing files.")
+
+st.divider()
