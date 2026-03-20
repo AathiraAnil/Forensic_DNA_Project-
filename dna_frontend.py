@@ -7,7 +7,7 @@ import tensorflow as tf
 # -------------------------
 # Load Models
 # -------------------------
-rf_model = joblib.load("../models/random_forest_model.pkl")
+rf_model = joblib.load("models/random_forest_model.pkl")
 dl_model = tf.keras.models.load_model("../models/dl_model.h5")
 
 # -------------------------
