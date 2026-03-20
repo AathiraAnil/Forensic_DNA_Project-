@@ -1,99 +1,67 @@
 import os
-# MANDATORY: This must be the very first line to stop the "Recursion" error
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
-
 import streamlit as st
-import pandas as pd
 import numpy as np
 import joblib
 
-# Special handling for TensorFlow to prevent "Keras not found" errors
+# THE FIX: Use the legacy-specific library to stop the "Recursion" loop
 try:
     import tensorflow as tf
+    import tf_keras as keras  # This is the secret weapon
 except ImportError:
-    st.error("🚨 TensorFlow is not installed. Check your requirements.txt.")
+    st.error("🚨 Libraries are still installing. Please wait 2-3 minutes.")
 
-# --- PAGE SETUP ---
 st.set_page_config(page_title="Forensic DNA Phenotyping", layout="centered")
 st.title("🔬 Forensic DNA Phenotyping")
 st.write("### Iris Color Prediction System")
-st.sidebar.header("Model Status")
 
 # --- LOAD MODELS ---
-# We assume the files are in the main folder based on your screenshot
 rf_model = None
 dl_model = None
 
 try:
-    # 1. Load the Random Forest model
+    # 1. Load Random Forest
     rf_model = joblib.load("random_forest_model.pkl")
     
-    # 2. Load the NEW .keras file from Google Colab
-    dl_model = tf.keras.models.load_model("dl_model.keras")
-    
-    st.sidebar.success("✅ Both Models Loaded")
+    # 2. Load Deep Learning using the SPECIAL legacy loader
+    # This avoids the "Maximum Recursion Depth" error completely
+    if os.path.exists("dl_model.keras"):
+        dl_model = keras.models.load_model("dl_model.keras", compile=False)
+        st.sidebar.success("✅ Models Loaded Successfully")
+    else:
+        st.sidebar.error("❌ 'dl_model.keras' not found in main folder.")
 except Exception as e:
     st.sidebar.error(f"❌ Error: {e}")
-    st.sidebar.info("Ensure 'dl_model.keras' and 'random_forest_model.pkl' are in the main GitHub folder.")
 
-# --- INPUT UI ---
+# --- UI LOGIC ---
 st.divider()
 st.subheader("Enter SNP Genotypes")
-st.info("Please select the genotype for each SNP (0, 1, or 2).")
-
 col1, col2 = st.columns(2)
 with col1:
-    snp1 = st.selectbox("SNP 1 (rs12913832)", [0, 1, 2], help="HERC2 gene variant")
-    snp2 = snp1 # Duplicate for demo if you only have 4 inputs total
-    snp2 = st.selectbox("SNP 2", [0, 1, 2])
+    s1 = st.selectbox("SNP 1", [0, 1, 2])
+    s2 = st.selectbox("SNP 2", [0, 1, 2])
 with col2:
-    snp3 = st.selectbox("SNP 3", [0, 1, 2])
-    snp4 = st.selectbox("SNP 4", [0, 1, 2])
+    s3 = st.selectbox("SNP 3", [0, 1, 2])
+    s4 = st.selectbox("SNP 4", [0, 1, 2])
 
-# --- PREDICTION LOGIC ---
 if st.button("Predict Eye Color", type="primary"):
-    if rf_model is not None and dl_model is not None:
-        # Prepare input data (1 row, 4 features)
-        input_data = np.array([[snp1, snp2, snp3, snp4]])
+    if rf_model and dl_model:
+        input_data = np.array([[s1, s2, s3, s4]])
         
-        # 1. Random Forest Prediction
-        rf_pred = rf_model.predict(input_data)[0]
+        # RF Prediction
+        rf_res = rf_model.predict(input_data)[0]
         
-        # 2. Deep Learning Prediction
-        dl_probs = dl_model.predict(input_data)
-        categories = ["Blue", "Brown", "Green"]
-        dl_pred = categories[np.argmax(dl_probs)]
+        # DL Prediction
+        dl_raw = dl_model.predict(input_data)
+        classes = ["Blue", "Brown", "Green"]
+        dl_res = classes[np.argmax(dl_raw)]
         
-        st.divider()
+        st.write(f"#### Result: {rf_res}")
         
-        # --- DISPLAY RESULTS ---
-        res_col1, res_col2 = st.columns(2)
-        
-        with res_col1:
-            st.write("#### Random Forest")
-            st.success(f"**Result: {rf_pred}**")
-            
-        with res_col2:
-            st.write("#### Deep Learning")
-            st.info(f"**Result: {dl_pred}**")
-            
-        # --- IMAGE DISPLAY ---
-        # Logic to pick the right image based on RF prediction
-        color_key = str(rf_pred).lower()
-        if "brown" in color_key:
-            img_file = "brown_eye.png"
-        elif "green" in color_key:
-            img_file = "green_eye.png"
+        # Image Display
+        img_name = f"{str(rf_res).lower()}_eye.png"
+        if os.path.exists(img_name):
+            st.image(img_name, width=400)
         else:
-            img_file = "blue_eye.png"
-            
-        if os.path.exists(img_file):
-            st.image(img_file, width=400, caption=f"Predicted Phenotype: {rf_pred}")
-        else:
-            st.warning(f"⚠️ Image '{img_file}' not found in the GitHub main folder.")
-            
+            st.warning(f"Image {img_name} not found.")
     else:
-        st.error("Models are not loaded. Prediction cannot proceed.")
-
-st.divider()
-st.caption("B.Tech AIML Mini Project - Forensic DNA Phenotyping")
+        st.error("Models not loaded.")
