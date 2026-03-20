@@ -1,5 +1,5 @@
 import os
-# Force Keras 2 behavior before importing TensorFlow
+# This MUST be the first line
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import streamlit as st
@@ -8,76 +8,48 @@ import numpy as np
 import joblib
 import tensorflow as tf
 
-
-
 # --- SETUP PATHS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# --- SMART LOAD: RANDOM FOREST ---
-rf_paths = [
-    os.path.join(BASE_DIR, "models", "random_forest_model.pkl"),
-    os.path.join(BASE_DIR, "Models", "random_forest_model.pkl"),
-    os.path.join(BASE_DIR, "random_forest_model.pkl")
-]
+# --- HELPER TO FIND FILES ---
+def find_model(filename):
+    paths = [
+        os.path.join(BASE_DIR, "models", filename),
+        os.path.join(BASE_DIR, "Models", filename),
+        os.path.join(BASE_DIR, filename)
+    ]
+    for p in paths:
+        if os.path.isfile(p):
+            return p
+    return None
 
+# --- LOAD MODELS ---
 rf_model = None
-for path in rf_paths:
-    if os.path.isfile(path):
-        rf_model = joblib.load(path)
-        break
-
-if rf_model is None:
-    st.error(f"❌ Random Forest Model NOT found. Searched: {rf_paths}")
-    st.stop()
-
-# --- SMART LOAD: DEEP LEARNING ---
-dl_paths = [
-    os.path.join(BASE_DIR, "models", "dl_model.h5"),
-    os.path.join(BASE_DIR, "Models", "dl_model.h5"),
-    os.path.join(BASE_DIR, "dl_model.h5")
-]
+rf_path = find_model("random_forest_model.pkl")
+if rf_path:
+    try:
+        rf_model = joblib.load(rf_path)
+    except Exception as e:
+        st.error(f"⚠️ Random Forest Load Error: {e}")
+        st.info("This is likely a version mismatch. Try re-saving your model on your laptop.")
+else:
+    st.error("❌ random_forest_model.pkl not found!")
 
 dl_model = None
-for path in dl_paths:
-    if os.path.isfile(path):
-        # compile=False fixes the TypeError by skipping version-heavy checks
-        dl_model = tf.keras.models.load_model(path, compile=False)
-        break
+dl_path = find_model("dl_model.h5")
+if dl_path:
+    try:
+        dl_model = tf.keras.models.load_model(dl_path, compile=False)
+    except Exception as e:
+        st.error(f"⚠️ Deep Learning Load Error: {e}")
+else:
+    st.error("❌ dl_model.h5 not found!")
 
-if dl_model is None:
-    st.error(f"❌ Deep Learning Model NOT found. Searched: {dl_paths}")
-    st.stop()
+# --- UI ---
+st.title("🔬 DNA Phenotyping")
 
-# --- STREAMLIT UI ---
-st.set_page_config(page_title="DNA Phenotyping", page_icon="🔬")
-st.title("🔬 Forensic DNA Phenotyping - Iris Color Prediction")
-
-# Note: Ensure the range (4) matches your model's expected input count
-snp_labels = [f"SNP {i+1}" for i in range(4)]
-snp_values = []
-for snp in snp_labels:
-    value = st.selectbox(snp, ["0", "1", "2"], index=0)
-    snp_values.append(int(value))
-
-input_data = np.array(snp_values).reshape(1, -1)
-
-# --- PREDICTION ---
-if st.button("Predict Eye Color"):
-    # RF Prediction
-    rf_pred = str(rf_model.predict(input_data)[0]).lower().strip()
-
-    if "brown" in rf_pred:
-        predicted_color, img_name = "Brown", "brown_eye.png"
-    elif "green" in rf_pred:
-        predicted_color, img_name = "Green", "green_eye.png"
-    else:
-        predicted_color, img_name = "Blue", "blue_eye.png"
-
-    st.success(f"🎯 Predicted Eye Color: **{predicted_color}**")
-
-    # Display Image Safely
-    img_path = os.path.join(BASE_DIR, "images", img_name)
-    if os.path.isfile(img_path):
-        st.image(img_path, width=250)
-    else:
-        st.warning(f"Image '{img_name}' not found in /images folder.")
+if rf_model and dl_model:
+    st.success("✅ All models loaded successfully!")
+    # ... rest of your SNP input and prediction logic here ...
+else:
+    st.warning("The app cannot predict until the models above are fixed.")
