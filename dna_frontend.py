@@ -1,9 +1,14 @@
+import os
+# Force Keras 2 behavior before importing TensorFlow
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 import tensorflow as tf
-import os
+
+
 
 # --- SETUP PATHS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
