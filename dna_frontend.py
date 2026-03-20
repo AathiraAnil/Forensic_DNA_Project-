@@ -13,15 +13,14 @@ st.sidebar.header("Model Status")
 
 # --- MANUAL MODEL BUILDER (DL) ---
 def load_manual_dl_model():
-    # We build the 'socket' to match your '10-pin plug' (model_weights.weights.h5)
-    # The architecture below matches the (10, 32) shape from your error message.
+    # FIXED: The architecture now exactly matches your weights: 10 -> 32 -> 16 -> 3
     model = models.Sequential([
         layers.Input(shape=(10,)), 
-        layers.Dense(32, activation='relu'),
-        layers.Dense(32, activation='relu'),
-        layers.Dense(3, activation='softmax')
+        layers.Dense(32, activation='relu'), # Layer 1 (32 nodes)
+        layers.Dense(16, activation='relu'), # Layer 2 (16 nodes)
+        layers.Dense(3, activation='softmax') # Output Layer (3 classes)
     ])
-    # Load the raw math (weights) you just downloaded from Colab
+    # Load the raw math (weights) you downloaded from Colab
     model.load_weights("model_weights.weights.h5")
     return model
 
@@ -91,7 +90,6 @@ if st.button("Predict Eye Color", type="primary"):
                 st.info(f"**Result: {dl_pred}**")
                 
             # --- IMAGE DISPLAY ---
-            # Logic: Convert prediction to lowercase to match filename (e.g., 'brown_eye.png')
             color_key = str(rf_pred).lower()
             if "brown" in color_key:
                 img_file = "brown_eye.png"
@@ -108,6 +106,6 @@ if st.button("Predict Eye Color", type="primary"):
         except Exception as e:
             st.error(f"Prediction Error: {e}")
     else:
-        st.error("Models are not loaded. Check the sidebar for missing files.")
+        st.error("Models not loaded. Check the sidebar for missing files.")
 
 st.divider()
