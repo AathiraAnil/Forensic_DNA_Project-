@@ -6,31 +6,37 @@ import tensorflow as tf
 import os
 
 # -------------------------
-# Load Models
+# Setup Paths (CRITICAL FOR DEPLOYMENT)
 # -------------------------
-
 # This finds the absolute path to your script's folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# This creates the full path to the model file
-model_path = os.path.join(BASE_DIR, "models", "random_forest_model.pkl")
+# -------------------------
+# Load Models Safely
+# -------------------------
 
-# This safely loads the model or shows a helpful error if it's missing
-if os.path.isfile(model_path):
-    rf_model = joblib.load(model_path)
+# 1. Random Forest Path
+rf_path = os.path.join(BASE_DIR, "models", "random_forest_model.pkl")
+if os.path.isfile(rf_path):
+    rf_model = joblib.load(rf_path)
 else:
-    st.error(f"Error: File not found at {model_path}")
-    st.info("Check if your folder name is 'models' or 'Models' on GitHub.")
-# ----------------------------------------------------
-dl_model = tf.keras.models.load_model("../models/dl_model.h5")
+    st.error(f"Random Forest model not found at: {rf_path}")
+
+# 2. Deep Learning Path (FIXED: Removed ../)
+dl_path = os.path.join(BASE_DIR, "models", "dl_model.h5")
+if os.path.isfile(dl_path):
+    dl_model = tf.keras.models.load_model(dl_path)
+else:
+    st.error(f"Deep Learning model not found at: {dl_path}")
 
 # -------------------------
 # Streamlit UI
 # -------------------------
+st.set_page_config(page_title="Forensic DNA Phenotyping", page_icon="🔬")
 st.title("🔬 Forensic DNA Phenotyping - Iris Color Prediction")
 st.write("Upload SNP values to predict **eye color** using ML + Deep Learning")
 
-# SNP inputs (example for model with 10 SNPs)
+# SNP inputs (example for model with 4 SNPs as per your loop)
 snp_labels = [f"SNP {i+1}" for i in range(4)]
 
 snp_values = []
@@ -45,31 +51,30 @@ input_data = np.array(snp_values).reshape(1, -1)
 # -------------------------
 
 if st.button("Predict Eye Color"):
-
     # Random Forest Prediction
     rf_pred = rf_model.predict(input_data)[0]
 
-    # DEBUG OUTPUT
-    st.write("RF RAW MODEL OUTPUT:", rf_pred)
-
     # Normalize output
-    rf_pred = rf_pred.lower()
+    rf_pred = str(rf_pred).lower().strip()
 
     # Map prediction
-    if rf_pred == "brown":
+    if "brown" in rf_pred:
         predicted_color = "Brown"
-    elif rf_pred == "green":
+        img_name = "brown_eye.png"
+    elif "green" in rf_pred:
         predicted_color = "Green"
+        img_name = "green_eye.png"
     else:
         predicted_color = "Blue"
+        img_name = "blue_eye.png"
 
     # Display result
     st.success(f"🎯 Predicted Eye Color: **{predicted_color}**")
 
-    # Display Image
-    if predicted_color == "Blue":
-        st.image("../images/blue_eye.png", width=250)
-    elif predicted_color == "Green":
-        st.image("../images/green_eye.png", width=250)
+    # 3. Display Image Safely (FIXED: Removed ../)
+    img_path = os.path.join(BASE_DIR, "images", img_name)
+    
+    if os.path.isfile(img_path):
+        st.image(img_path, width=250)
     else:
-        st.image("../images/brown_eye.png", width=250)
+        st.warning(f"Eye image not found at: {img_path}")
