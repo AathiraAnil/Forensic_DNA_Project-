@@ -22,7 +22,7 @@ for path in rf_paths:
         break
 
 if rf_model is None:
-    st.error(f"❌ Random Forest Model NOT found. I checked: {rf_paths}")
+    st.error(f"❌ Random Forest Model NOT found. Searched: {rf_paths}")
     st.stop()
 
 # --- SMART LOAD: DEEP LEARNING ---
@@ -35,17 +35,19 @@ dl_paths = [
 dl_model = None
 for path in dl_paths:
     if os.path.isfile(path):
-        dl_model = tf.keras.models.load_model(path)
+        # compile=False fixes the TypeError by skipping version-heavy checks
+        dl_model = tf.keras.models.load_model(path, compile=False)
         break
 
 if dl_model is None:
-    st.error(f"❌ Deep Learning Model NOT found. I checked: {dl_paths}")
+    st.error(f"❌ Deep Learning Model NOT found. Searched: {dl_paths}")
     st.stop()
 
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="DNA Phenotyping", page_icon="🔬")
 st.title("🔬 Forensic DNA Phenotyping - Iris Color Prediction")
 
+# Note: Ensure the range (4) matches your model's expected input count
 snp_labels = [f"SNP {i+1}" for i in range(4)]
 snp_values = []
 for snp in snp_labels:
@@ -56,6 +58,7 @@ input_data = np.array(snp_values).reshape(1, -1)
 
 # --- PREDICTION ---
 if st.button("Predict Eye Color"):
+    # RF Prediction
     rf_pred = str(rf_model.predict(input_data)[0]).lower().strip()
 
     if "brown" in rf_pred:
@@ -67,7 +70,7 @@ if st.button("Predict Eye Color"):
 
     st.success(f"🎯 Predicted Eye Color: **{predicted_color}**")
 
-    # Display Image
+    # Display Image Safely
     img_path = os.path.join(BASE_DIR, "images", img_name)
     if os.path.isfile(img_path):
         st.image(img_path, width=250)
