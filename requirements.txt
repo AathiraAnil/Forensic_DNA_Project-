@@ -1,7 +1,7 @@
 streamlit
-numpy
+numpy==1.24.3
 pandas
 scikit-learn
 joblib
-h5py==3.10.0
+h5py
 tensorflow==2.15.0
