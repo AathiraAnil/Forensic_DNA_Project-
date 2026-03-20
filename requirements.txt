@@ -3,5 +3,5 @@ numpy
 pandas
 scikit-learn
 joblib
-h5py
-tensorflow
+h5py==3.10.0
+tensorflow==2.15.0
