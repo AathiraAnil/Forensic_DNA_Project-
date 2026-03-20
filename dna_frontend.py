@@ -3,11 +3,25 @@ import pandas as pd
 import numpy as np
 import joblib
 import tensorflow as tf
+import os
 
 # -------------------------
 # Load Models
 # -------------------------
-rf_model = joblib.load("models/random_forest_model.pkl")
+
+# This finds the absolute path to your script's folder
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# This creates the full path to the model file
+model_path = os.path.join(BASE_DIR, "models", "random_forest_model.pkl")
+
+# This safely loads the model or shows a helpful error if it's missing
+if os.path.isfile(model_path):
+    rf_model = joblib.load(model_path)
+else:
+    st.error(f"Error: File not found at {model_path}")
+    st.info("Check if your folder name is 'models' or 'Models' on GitHub.")
+# ----------------------------------------------------
 dl_model = tf.keras.models.load_model("../models/dl_model.h5")
 
 # -------------------------
